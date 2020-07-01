@@ -10,7 +10,7 @@ AOS-DR uses a dependency matrix (D-matrix) approach for performing diagnosis. Th
 
 -----------------------
 ### Contact
-If you have questions about AOS-DR, please contact Adam Sweet <<adam.sweet@nasa.gov>> or Chris Tuebert <<christopher.a.teubert@nasa.gov>>.
+If you have questions about AOS-DR, please contact Adam Sweet <<adam.sweet@nasa.gov>> or Chris Teubert <<christopher.a.teubert@nasa.gov>>.
 
 -----------------------
 ### Contributing
