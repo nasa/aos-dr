@@ -1,0 +1,136 @@
+
+Here are some instructions I wrote in the original README file. They are specific to using versions of cFE/cFS that were hosted on internal NASA servers. However, they may be helpful to guide others in assembling a cFE system from the open-source repos. 
+
+-----------------------
+Assembling cFE
+
+This version of DR is compatible with cFE 6.5. That is the version of
+cFE that was used by the project that developed DR. This code was tested
+to compile and run with a basic cFE/cFS 6.5 system, as described below.
+There are changes that would need to be made for running DR in a
+particular project's cFE/cFS system. Notably, individual projects each
+define a scheme for handling message IDs, and DR would need to be adapted
+to that scheme. Also, the DR tables must be adapted to deploy DR on a
+particular system of interest, as described in the DR User's Manual. 
+
+Integrating DR into cFE 6.5
+
+This section describes what I did to incorporate and run DR in a basic
+vanilla cFE 6.5 system. I used the cFE/cFS repositories on the Ames/TI
+trac/git server babelfish.arc.nasa.gov.
+
+First, I assembled a cFE/cFS system into a local empty git repo, according
+to the instructions at
+
+https://babelfish.arc.nasa.gov/trac/cfs_test/wiki/MissionProjectConstructionMethod
+
+For getting a cfe 6.5a release, and all accompanying modules/apps, I
+used these branchs / tags with these dates. Be careful if new versions
+are published to the branches, particularly of the apps. It probably
+would work but I haven't tried it. 
+
+cfe:   cfe-rel-6.5.0a     2016-06-23 13:46:58 -0700
+osal:  osal-rel-4.2a      2016-07-27 10:30:57 -0400
+psp:   psp-rel-1.3.0      2016-05-24 12:06:50 -0700
+tools: tools-rel-6.5.0    2016-06-14 12:44:57 -0700
+
+apps/sample_lib:  sample_lib-master   2015-03-05 15:17:44
+apps/sample_app:  sample_app-master   2015-03-05 15:17:44
+apps/ci_lab:      ci_lab-master       2016-06-17 15:14:36
+apps/to_lab:      to_lab-master       2016-06-17 15:16:20
+apps/sch_lab:     sch_lab-master      2016-06-17 15:19:17
+apps/lc:          lc-development      2015-03-06 10:59:01
+apps/dr:          dr-master           2018-07-14 08:56:03
+
+So, following the wiki instructions, I first set up the remote repos
+with these commands. Replace <username> with your username. As you see,
+the project currently containing the DR source code is called "aos"
+and is also hosted on babelfish. If you are reading this you likely
+already have the DR code, so you may not need those commands.
+
+git remote add repo_osal   https://username@babelfish.arc.nasa.gov/git/cfs_osal
+git remote add repo_psp    https://username@babelfish.arc.nasa.gov/git/cfs_psp
+git remote add repo_cfe    https://username@babelfish.arc.nasa.gov/git/cfs_cfe
+git remote add repo_tools  https://username@babelfish.arc.nasa.gov/git/cfs_tools
+git remote add repo_apps   https://username@babelfish.arc.nasa.gov/git/cfs_apps
+git remote add repo_aos    https://username@babelfish.arc.nasa.gov/git/aos
+
+Then, I populated the local git repo with the needed modules and apps,
+with these commands:
+
+git subtree add  -q -P osal            repo_osal  osal-rel-4.2a          -m "import stock cFS 'osal' component (osal-rel-4.2a version)"
+git subtree add  -q -P psp             repo_psp   psp-rel-1.3.0          -m "import stock cFS 'psp' component (psp-rel-1.3.0 version)"
+git subtree add  -q -P cfe             repo_cfe   cfe-rel-6.5.0a         -m "import stock cFS 'cfe' component (cfe-rel-6.5.0a version)"
+git subtree add  -q -P tools           repo_tools tools-rel-6.5.0        -m "import stock cFS 'tools' component (tools-rel-6.5.0 version)"
+
+git subtree add  -q -P apps/sample_lib repo_apps  sample_lib-master      -m "import stock cFS 'sample_lib' application (master version)"
+git subtree add  -q -P apps/sample_app repo_apps  sample_app-master      -m "import stock cFS 'sample_app' application (master version)"
+
+git subtree add  -q -P apps/ci_lab     repo_apps  ci_lab-master          -m "import stock cFS 'ci_lab' application (master version)"
+git subtree add  -q -P apps/to_lab     repo_apps  to_lab-master          -m "import stock cFS 'to_lab' application (master version)"
+git subtree add  -q -P apps/sch_lab    repo_apps  sch_lab-master         -m "import stock cFS 'sch_lab' application (master version)"
+git subtree add  -q -P apps/lc         repo_apps  lc-development         -m "import stock cFS 'lc' application (development version)"
+git subtree add  -q -P apps/dr         repo_aos  dr-master               -m "import stock cFS 'dr' application (master version)"
+
+Next, I followed the wiki page's instructions as to the location of the
+instructions for a CMake build. The instructions were located at
+cfe/cmake/README.md. It involved copying some files needed for building,
+and configuring the file sample_defs/targets.cmake to add the LC and DR
+apps to the build.
+
+SET(TGT1_APPLIST sample_app sample_lib ci_lab to_lab sch_lab lc dr)
+
+In addition to those steps, it is necessary to add the apps being used
+to the cfe startup script. In this case, I needed to add LC and DR rows
+to sample_defs/cpu1_cfe_es_startup.scr. I followed the example of the other
+cFS apps listed there.
+
+That should be enough to follow the instructions on building. Basically
+those boil down to running commands at the top level:
+make prep
+make
+make install
+
+-----------------------
+Hints for building
+
+Finally, on running the system I tracked down some gotchas with LC and DR.
+These were mostly with getting the tables working. 
+
+- Check that the app name given in cfe_es_startup.scr matches the app
+name used to fill the tables. cFE will give an error on trying to load
+the tables if they are not the same. For LC it is the macro LC_APP_NAME,
+which is then used in the table definitions. For DR it is DR_APP_NAME. This
+macro must match the entry in cfe_es_startup.scr as the app name.
+I'm not sure if there is a good way to keep them in sync.
+
+in lc_platform_cfg.h:
+#define LC_APP_NAME                    "LC_APP"
+
+in dr_app.h:
+#define DR_APP_NAME                    "DR_APP"
+
+- Check that the LC table filenames are correct. Different versions of cFS
+seem to expect them in different places: /cf vs /cf/apps.
+#define LC_WDT_FILENAME                "/cf/lc_def_wdt.tbl"
+#define LC_ADT_FILENAME                "/cf/lc_def_adt.tbl"
+
+- LC needs to be activated in order to work and do its stuff. I changed
+the #define in lc_platform_cfg.h so that it will be activated on startup:
+#define LC_STATE_POWER_ON_RESET        LC_STATE_ACTIVE
+
+- Finally, LC does the table management when it sends the housekeeping data.
+So, the LC housekeeping wakeup message needs to be put on the scheduler
+table. For sch_lab, I added a line
+
+  { LC_SEND_HK_MID,       4, 0 },
+
+in sch_lab_sched_tab.h, and added
+
+#include "lc_msgids.h"
+
+so that sch_lab can find this definition. Finally, I added the LC dir as
+an include directory to the CMakeLists.txt for sch_lab.
+
+Hope these tips help! There may be other issues but those were the main
+ones I faced.
